@@ -442,7 +442,7 @@ end)
 -- ==========================================
 local OrionLib = loadstring(game:HttpGet(('https://raw.githubusercontent.com/jensonhirst/Orion/main/source')))()
 
-local Window = OrionLib:MakeWindow({Name = " SOLO HUNTERS ", HidePremium = true, SaveConfig = false, IntroText = "Solo Hunters Hub", IntroEnabled = true})
+local Window = OrionLib:MakeWindow({Name = "🗡️ SOLO HUNTERS ", HidePremium = true, SaveConfig = false, IntroText = "Solo Hunters Hub", IntroEnabled = true})
 
 local MainTab = Window:MakeTab({ Name = "Main Features", Icon = "rbxassetid://4483345998", PremiumOnly = false })
 MainTab:AddToggle({ Name = "Smart Aura (ฟันออโต้)", Default = false, Callback = function(val) getgenv().SmartAura = val end })
