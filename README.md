@@ -476,7 +476,7 @@ OrionLib:Init()
 -- 📢 ระบบแจ้งเตือนข่าวสาร (Popup Notification)
 -- ==========================================
 OrionLib:MakeNotification({
-    Name = "📢 อัปเดตล่าสุด: V1",
+    Name = "📢 อัปเดตล่าสุด: V1"
     Content = "เพิ่มระบบ Super Magnet ดูดของ + เปิดกล่องบอสอัตโนมัติ พร้อมลุยแล้ว!",
     Image = "rbxassetid://4483345998",
     Time = 5 -- ระยะเวลาที่ Popup จะโชว์ (วินาที)
@@ -485,7 +485,7 @@ OrionLib:MakeNotification({
 -- คุณสามารถเพิ่มแจ้งเตือนหลายอันได้ โดยเขียนต่อกันแบบนี้ครับ
 task.wait(2) -- รอ 2 วินาทีค่อยให้เด้งอันต่อไป
 OrionLib:MakeNotification({
-    Name = "💬 ประกาศจากผู้พัฒนา",
+    Name = "💬 ประกาศจากผู้พัฒนา"
     Content = "ขอให้สนุกกับการฟาร์ม! หากพบบั๊กสามารถแจ้ง BigBoyZz ได้เลยครับ",
     Image = "rbxassetid://4483345998",
     Time = 3
