@@ -1,0 +1,517 @@
+local Players = game:GetService("Players")
+local TeleportService = game:GetService("TeleportService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local VirtualUser = game:GetService("VirtualUser")
+local LocalPlayer = Players.LocalPlayer
+
+-- ==========================================
+-- 1. เตรียม Remote Functions
+-- ==========================================
+local TrainRemote = ReplicatedStorage:WaitForChild("Remote"):WaitForChild("TrainSystem")
+local AreaRemote = ReplicatedStorage:WaitForChild("Remote"):WaitForChild("Area")
+-- [ใหม่] Remote สำหรับเปลี่ยนเผ่า (Fight Style)
+local FightStyleRemote = ReplicatedStorage:WaitForChild("Remote"):WaitForChild("FightStyle"):WaitForChild("ReqEquipStyle")
+
+local ReqApplyEquipTrainMethod = TrainRemote:WaitForChild("ReqApplyEquipTrainMethod")
+local ReqClickTrain = TrainRemote:WaitForChild("ReqClickTrain")
+local ReqUpdateTrainSpeed = TrainRemote:WaitForChild("ReqUpdateTrainSpeed")
+
+local ReqEnterArea = AreaRemote:WaitForChild("ReqEnterArea")
+local ReqExitArea = AreaRemote:WaitForChild("ReqExitArea")
+
+local BaseArea = workspace:WaitForChild("Scene"):WaitForChild("Area")
+local BonusAreaFolder = BaseArea:WaitForChild("BonusAreaGhost")
+local BonusAreaHumanFolder = BaseArea:WaitForChild("BonusAreaHuman") -- [ใหม่] โฟลเดอร์ฝั่งมนุษย์
+local CapturableAreaFolder = BaseArea:WaitForChild("CapturableArea")
+
+-- ==========================================
+-- ฟังก์ชันช่วยทำขอบโค้งมน
+-- ==========================================
+local function addCorner(instance, radius)
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, radius or 6)
+    corner.Parent = instance
+end
+
+-- ==========================================
+-- ล้าง GUI เก่าออกก่อน
+-- ==========================================
+local existingGui = LocalPlayer:WaitForChild("PlayerGui"):FindFirstChild("DemonTrainerV4")
+if existingGui then existingGui:Destroy() end
+
+-- ==========================================
+-- 2. สร้างหน้าต่าง GUI (อัปเดต V13)
+-- ==========================================
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "DemonTrainerV4"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(0, 250, 0, 525) -- ขยายความสูงเพิ่ม 1 ปุ่ม
+mainFrame.Position = UDim2.new(0.5, -125, 0.5, -262)
+mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+mainFrame.BorderSizePixel = 0
+mainFrame.Active = true 
+mainFrame.Parent = screenGui
+addCorner(mainFrame, 8)
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, -30, 0, 30)
+title.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.Text = "Auto-Trainer V13 (Faction)"
+title.Font = Enum.Font.Code
+title.Parent = mainFrame
+addCorner(title, 6)
+
+local closeButton = Instance.new("TextButton")
+closeButton.Size = UDim2.new(0, 30, 0, 30)
+closeButton.Position = UDim2.new(1, -30, 0, 0)
+closeButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+closeButton.Text = "X"
+closeButton.Font = Enum.Font.GothamBold
+closeButton.Parent = mainFrame
+addCorner(closeButton, 6)
+
+local noclipButton = Instance.new("TextButton")
+noclipButton.Size = UDim2.new(1, -20, 0, 30)
+noclipButton.Position = UDim2.new(0, 10, 0, 40)
+noclipButton.BackgroundColor3 = Color3.fromRGB(60, 60, 130)
+noclipButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+noclipButton.Text = "Noclip: OFF"
+noclipButton.Font = Enum.Font.GothamBold
+noclipButton.Parent = mainFrame
+addCorner(noclipButton)
+
+-- [ใหม่] ปุ่มสลับเผ่า
+local factionButton = Instance.new("TextButton")
+factionButton.Size = UDim2.new(1, -20, 0, 30)
+factionButton.Position = UDim2.new(0, 10, 0, 75)
+factionButton.BackgroundColor3 = Color3.fromRGB(150, 50, 50) -- สีแดง (เผ่า 4)
+factionButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+factionButton.Text = "Faction: Style 4 (Demon)"
+factionButton.Font = Enum.Font.GothamBold
+factionButton.Parent = mainFrame
+addCorner(factionButton)
+
+local ghost150Button = Instance.new("TextButton")
+ghost150Button.Size = UDim2.new(1, -20, 0, 30)
+ghost150Button.Position = UDim2.new(0, 10, 0, 110)
+ghost150Button.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+ghost150Button.TextColor3 = Color3.fromRGB(255, 255, 255)
+ghost150Button.Text = "150% Area: OFF"
+ghost150Button.Font = Enum.Font.GothamBold
+ghost150Button.Parent = mainFrame
+addCorner(ghost150Button)
+
+local ghost300Button = Instance.new("TextButton")
+ghost300Button.Size = UDim2.new(1, -20, 0, 30)
+ghost300Button.Position = UDim2.new(0, 10, 0, 145)
+ghost300Button.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+ghost300Button.TextColor3 = Color3.fromRGB(255, 255, 255)
+ghost300Button.Text = "300% Area: OFF"
+ghost300Button.Font = Enum.Font.GothamBold
+ghost300Button.Parent = mainFrame
+addCorner(ghost300Button)
+
+local toggleButton = Instance.new("TextButton")
+toggleButton.Size = UDim2.new(1, -20, 0, 35)
+toggleButton.Position = UDim2.new(0, 10, 0, 180)
+toggleButton.BackgroundColor3 = Color3.fromRGB(150, 50, 50)
+toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+toggleButton.Text = "Auto Farm: OFF"
+toggleButton.Font = Enum.Font.GothamBold
+toggleButton.Parent = mainFrame
+addCorner(toggleButton)
+
+local typeLabel = Instance.new("TextLabel")
+typeLabel.Size = UDim2.new(1, -20, 0, 15)
+typeLabel.Position = UDim2.new(0, 10, 0, 220)
+typeLabel.BackgroundTransparency = 1
+typeLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+typeLabel.Text = "Select Stat to Train:"
+typeLabel.Font = Enum.Font.Code
+typeLabel.Parent = mainFrame
+
+local attackButton = Instance.new("TextButton")
+attackButton.Size = UDim2.new(0, 110, 0, 30)
+attackButton.Position = UDim2.new(0, 10, 0, 240)
+attackButton.BackgroundColor3 = Color3.fromRGB(50, 100, 150)
+attackButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+attackButton.Text = "ATTACK (5)"
+attackButton.Font = Enum.Font.GothamBold
+attackButton.Parent = mainFrame
+addCorner(attackButton)
+
+local healthButton = Instance.new("TextButton")
+healthButton.Size = UDim2.new(0, 110, 0, 30)
+healthButton.Position = UDim2.new(0, 130, 0, 240)
+healthButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+healthButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+healthButton.Text = "HEALTH (6)"
+healthButton.Font = Enum.Font.GothamBold
+healthButton.Parent = mainFrame
+addCorner(healthButton)
+
+local defenseButton = Instance.new("TextButton")
+defenseButton.Size = UDim2.new(0, 110, 0, 30)
+defenseButton.Position = UDim2.new(0, 10, 0, 275)
+defenseButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+defenseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+defenseButton.Text = "DEFENSE (7)"
+defenseButton.Font = Enum.Font.GothamBold
+defenseButton.Parent = mainFrame
+addCorner(defenseButton)
+
+local pierceButton = Instance.new("TextButton")
+pierceButton.Size = UDim2.new(0, 110, 0, 30)
+pierceButton.Position = UDim2.new(0, 130, 0, 275)
+pierceButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+pierceButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+pierceButton.Text = "PIERCE (8)"
+pierceButton.Font = Enum.Font.GothamBold
+pierceButton.Parent = mainFrame
+addCorner(pierceButton)
+
+local trainAllButton = Instance.new("TextButton")
+trainAllButton.Size = UDim2.new(1, -20, 0, 30)
+trainAllButton.Position = UDim2.new(0, 10, 0, 310)
+trainAllButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+trainAllButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+trainAllButton.Text = "TRAIN ALL (Auto-Cycle)"
+trainAllButton.Font = Enum.Font.GothamBold
+trainAllButton.Parent = mainFrame
+addCorner(trainAllButton)
+
+local speedLabel = Instance.new("TextLabel")
+speedLabel.Size = UDim2.new(1, -20, 0, 15)
+speedLabel.Position = UDim2.new(0, 10, 0, 350)
+speedLabel.Text = "Training Speed:"
+speedLabel.BackgroundTransparency = 1
+speedLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+speedLabel.Font = Enum.Font.Code
+speedLabel.Parent = mainFrame
+
+local speedSafeButton = Instance.new("TextButton")
+speedSafeButton.Size = UDim2.new(0, 70, 0, 30)
+speedSafeButton.Position = UDim2.new(0, 10, 0, 370)
+speedSafeButton.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
+speedSafeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+speedSafeButton.Text = "SAFE"
+speedSafeButton.Font = Enum.Font.GothamBold
+speedSafeButton.Parent = mainFrame
+addCorner(speedSafeButton)
+
+local speedFastButton = Instance.new("TextButton")
+speedFastButton.Size = UDim2.new(0, 70, 0, 30)
+speedFastButton.Position = UDim2.new(0, 90, 0, 370)
+speedFastButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+speedFastButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+speedFastButton.Text = "FAST"
+speedFastButton.Font = Enum.Font.GothamBold
+speedFastButton.Parent = mainFrame
+addCorner(speedFastButton)
+
+local speedInsaneButton = Instance.new("TextButton")
+speedInsaneButton.Size = UDim2.new(0, 70, 0, 30)
+speedInsaneButton.Position = UDim2.new(0, 170, 0, 370)
+speedInsaneButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+speedInsaneButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+speedInsaneButton.Text = "INSANE"
+speedInsaneButton.Font = Enum.Font.GothamBold
+speedInsaneButton.Parent = mainFrame
+addCorner(speedInsaneButton)
+
+local currentStatusLabel = Instance.new("TextLabel")
+currentStatusLabel.Size = UDim2.new(1, -20, 0, 20)
+currentStatusLabel.Position = UDim2.new(0, 10, 0, 410)
+currentStatusLabel.BackgroundTransparency = 1
+currentStatusLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+currentStatusLabel.Text = "Status: Idle | Area: Normal"
+currentStatusLabel.Font = Enum.Font.Code
+currentStatusLabel.Parent = mainFrame
+
+local cpuSaverButton = Instance.new("TextButton")
+cpuSaverButton.Size = UDim2.new(1, -20, 0, 30)
+cpuSaverButton.Position = UDim2.new(0, 10, 0, 445)
+cpuSaverButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+cpuSaverButton.BorderColor3 = Color3.fromRGB(255, 255, 255)
+cpuSaverButton.BorderSizePixel = 1
+cpuSaverButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+cpuSaverButton.Text = "CPU Saver (Black Screen)"
+cpuSaverButton.Font = Enum.Font.GothamBold
+cpuSaverButton.Parent = mainFrame
+addCorner(cpuSaverButton)
+
+local rejoinButton = Instance.new("TextButton")
+rejoinButton.Size = UDim2.new(1, -20, 0, 30)
+rejoinButton.Position = UDim2.new(0, 10, 0, 485)
+rejoinButton.BackgroundColor3 = Color3.fromRGB(50, 100, 150)
+rejoinButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+rejoinButton.Text = "Rejoin Server"
+rejoinButton.Font = Enum.Font.GothamBold
+rejoinButton.Parent = mainFrame
+addCorner(rejoinButton)
+
+-- ==========================================
+-- Black Screen GUI
+-- ==========================================
+local blackScreenGui = Instance.new("ScreenGui")
+blackScreenGui.Name = "CpuSaverScreen"
+blackScreenGui.ResetOnSpawn = false
+blackScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+local blackFrame = Instance.new("TextButton")
+blackFrame.Size = UDim2.new(10, 0, 10, 0)
+blackFrame.Position = UDim2.new(-5, 0, -5, 0)
+blackFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+blackFrame.Text = "CPU Saver ON | Farming in Background...\n(Click anywhere to wake up)"
+blackFrame.TextColor3 = Color3.fromRGB(150, 150, 150)
+blackFrame.TextSize = 24
+blackFrame.Font = Enum.Font.GothamBold
+blackFrame.Visible = false
+blackFrame.ZIndex = 999
+blackFrame.Parent = blackScreenGui
+
+cpuSaverButton.MouseButton1Click:Connect(function()
+    blackFrame.Visible = true
+    pcall(function() RunService:Set3dRenderingEnabled(false) end)
+end)
+
+blackFrame.MouseButton1Click:Connect(function()
+    blackFrame.Visible = false
+    pcall(function() RunService:Set3dRenderingEnabled(true) end)
+end)
+
+-- ==========================================
+-- ระบบเปิด-ปิด หน้าต่างด้วย Ctrl
+-- ==========================================
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if not gameProcessed then
+        if input.KeyCode == Enum.KeyCode.LeftControl or input.KeyCode == Enum.KeyCode.RightControl then
+            mainFrame.Visible = not mainFrame.Visible
+        end
+    end
+end)
+
+-- ==========================================
+-- ระบบ Anti-AFK
+-- ==========================================
+LocalPlayer.Idled:Connect(function()
+    VirtualUser:CaptureController()
+    VirtualUser:ClickButton2(Vector2.new())
+end)
+
+-- ==========================================
+-- ระบบลากจูง
+-- ==========================================
+local dragging, dragInput, dragStart, startPos
+mainFrame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true; dragStart = input.Position; startPos = mainFrame.Position
+        input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then dragging = false end end)
+    end
+end)
+mainFrame.InputChanged:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end end)
+UserInputService.InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        local delta = input.Position - dragStart
+        mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
+
+-- ==========================================
+-- 3. ตรรกะ Noclip & Area & Faction Switch
+-- ==========================================
+local noclipActive = false
+RunService.Stepped:Connect(function()
+    if noclipActive and LocalPlayer.Character then
+        for _, part in ipairs(LocalPlayer.Character:GetDescendants()) do
+            if part:IsA("BasePart") and part.CanCollide == true then part.CanCollide = false end
+        end
+    end
+end)
+
+noclipButton.MouseButton1Click:Connect(function()
+    noclipActive = not noclipActive
+    noclipButton.Text = noclipActive and "Noclip: ON" or "Noclip: OFF"
+    noclipButton.BackgroundColor3 = noclipActive and Color3.fromRGB(50, 150, 50) or Color3.fromRGB(60, 60, 130)
+end)
+
+local trainerEnabled = false
+local currentArea = "Normal"
+local currentTrainId = 5
+local lockedCFrame = nil
+local farmSpeedMultiplier = 1
+local waitDelay = 0.05 
+local trainAllEnabled = false
+local currentFactionId = 4 -- เริ่มต้นด้วยรหัส 4 (อสูร)
+
+local function updateStatusLabel()
+    currentStatusLabel.Text = string.format("Status: %s | Area: %s", trainerEnabled and "Farming" or "Idle", currentArea)
+end
+
+local function exitCurrentArea()
+    if currentArea == "150%" then
+		-- [อัปเดต] เช็กเผ่าก่อนออก เพื่อเลือกลบโฟลเดอร์ให้ถูกฝั่ง
+		local target150Folder = (currentFactionId == 4) and BonusAreaFolder or BonusAreaHumanFolder
+        for _, id in ipairs({"1", "2", "7"}) do task.spawn(function() pcall(function() ReqExitArea:FireServer(target150Folder:FindFirstChild(id), LocalPlayer.Character, 7) end) end) end
+    elseif currentArea == "300%" then
+		-- [อัปเดต] เปลี่ยนเป็น ID 1 และ 4 ตาม Log ล่าสุด
+        for _, id in ipairs({"1", "4"}) do task.spawn(function() pcall(function() ReqExitArea:FireServer(CapturableAreaFolder:FindFirstChild(id), LocalPlayer.Character, 6) end) end) end
+    end
+end
+
+local function setGhostArea(target)
+    exitCurrentArea() 
+    ghost150Button.BackgroundColor3 = Color3.fromRGB(50, 50, 50); ghost150Button.Text = "150% Area: OFF"
+    ghost300Button.BackgroundColor3 = Color3.fromRGB(50, 50, 50); ghost300Button.Text = "300% Area: OFF"
+    
+    if target == "150" then
+        currentArea = "150%"; ghost150Button.BackgroundColor3 = Color3.fromRGB(50, 150, 50); ghost150Button.Text = "150% Area: ON"
+		-- [อัปเดต] เลือกมุดโฟลเดอร์ตามเผ่าปัจจุบัน
+		local target150Folder = (currentFactionId == 4) and BonusAreaFolder or BonusAreaHumanFolder
+        for _, id in ipairs({"1", "2", "7"}) do task.spawn(function() pcall(function() ReqEnterArea:FireServer(target150Folder:FindFirstChild(id), LocalPlayer.Character, 7) end) end) end
+    elseif target == "300" then
+        currentArea = "300%"; ghost300Button.BackgroundColor3 = Color3.fromRGB(50, 150, 50); ghost300Button.Text = "300% Area: ON"
+		-- [อัปเดต] เปลี่ยนเป็น ID 1 และ 4 ตาม Log ล่าสุด
+        for _, id in ipairs({"1", "4"}) do task.spawn(function() pcall(function() ReqEnterArea:FireServer(CapturableAreaFolder:FindFirstChild(id), LocalPlayer.Character, 6) end) end) end
+    else currentArea = "Normal" end
+    updateStatusLabel()
+end
+
+-- [ใหม่] ตรรกะสลับเผ่า
+factionButton.MouseButton1Click:Connect(function()
+	setGhostArea("Normal") -- บังคับออกพื้นที่ก่อนเปลี่ยนเผ่ากันบัค
+	
+	if currentFactionId == 4 then
+		currentFactionId = 12
+		factionButton.Text = "Faction: Style 12 (Slayer)"
+		factionButton.BackgroundColor3 = Color3.fromRGB(50, 100, 150) -- สีฟ้า (ฝั่งนักล่า/มนุษย์)
+	else
+		currentFactionId = 4
+		factionButton.Text = "Faction: Style 4 (Demon)"
+		factionButton.BackgroundColor3 = Color3.fromRGB(150, 50, 50) -- สีแดง (ฝั่งอสูร)
+	end
+	
+	task.spawn(function()
+		pcall(function()
+			FightStyleRemote:InvokeServer(currentFactionId)
+		end)
+	end)
+end)
+
+ghost150Button.MouseButton1Click:Connect(function() if currentArea == "150%" then setGhostArea("Normal") else setGhostArea("150") end end)
+ghost300Button.MouseButton1Click:Connect(function() if currentArea == "300%" then setGhostArea("Normal") else setGhostArea("300") end end)
+
+-- ==========================================
+-- 4. ตรรกะฟาร์มหลัก
+-- ==========================================
+local function startAutoFarm()
+    while task.wait(waitDelay) do
+        if not trainerEnabled or not screenGui.Parent then continue end
+        local character = LocalPlayer.Character
+        if character and character:FindFirstChild("HumanoidRootPart") then
+            if not lockedCFrame then lockedCFrame = character.HumanoidRootPart.CFrame
+            else character.HumanoidRootPart.CFrame = lockedCFrame end
+            
+            for i = 1, farmSpeedMultiplier do
+                task.spawn(function()
+                    pcall(function()
+                        ReqUpdateTrainSpeed:InvokeServer(6)
+                        ReqClickTrain:InvokeServer()
+                    end)
+                end)
+            end
+        else
+            lockedCFrame = nil
+        end
+    end
+end
+task.spawn(startAutoFarm)
+
+-- ==========================================
+-- 5. ตรรกะสลับสเตตัสอัตโนมัติ (Train All แบบสุ่มดีเลย์เนียนๆ)
+-- ==========================================
+local statCycle = {5, 6, 7, 8}
+local currentCycleIndex = 1
+
+task.spawn(function()
+    while true do 
+        local randomDelay = math.random(11, 18) / 10 
+        task.wait(randomDelay)
+        
+        if trainerEnabled and trainAllEnabled and screenGui.Parent then
+            currentCycleIndex = currentCycleIndex + 1
+            if currentCycleIndex > #statCycle then currentCycleIndex = 1 end
+            local statToTrain = statCycle[currentCycleIndex]
+            pcall(function()
+                ReqApplyEquipTrainMethod:InvokeServer(statToTrain)
+            end)
+        end
+    end
+end)
+
+-- ==========================================
+-- 6. การทำงานปุ่ม Stat & Speed
+-- ==========================================
+closeButton.MouseButton1Click:Connect(function() trainerEnabled = false; noclipActive = false; exitCurrentArea(); screenGui:Destroy(); blackScreenGui:Destroy() end)
+
+local function resetStatButtonsColor()
+    attackButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    healthButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    defenseButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    pierceButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    trainAllButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+end
+
+local function setTrainingMode(id, btn)
+    trainAllEnabled = false 
+    currentTrainId = id
+    resetStatButtonsColor()
+    if btn then btn.BackgroundColor3 = Color3.fromRGB(50, 100, 150) end 
+    
+    task.spawn(function()
+        pcall(function()
+            ReqApplyEquipTrainMethod:InvokeServer(id)
+            task.wait(0.1)
+            ReqUpdateTrainSpeed:InvokeServer(6) 
+        end)
+    end)
+end
+
+attackButton.MouseButton1Click:Connect(function() setTrainingMode(5, attackButton) end)
+healthButton.MouseButton1Click:Connect(function() setTrainingMode(6, healthButton) end)
+defenseButton.MouseButton1Click:Connect(function() setTrainingMode(7, defenseButton) end)
+pierceButton.MouseButton1Click:Connect(function() setTrainingMode(8, pierceButton) end)
+
+trainAllButton.MouseButton1Click:Connect(function()
+    trainAllEnabled = true
+    resetStatButtonsColor()
+    trainAllButton.BackgroundColor3 = Color3.fromRGB(130, 40, 130) 
+end)
+
+local function resetSpeedButtonsColor()
+    speedSafeButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    speedFastButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    speedInsaneButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+end
+
+speedSafeButton.MouseButton1Click:Connect(function() farmSpeedMultiplier = 1; waitDelay = 0.05; resetSpeedButtonsColor(); speedSafeButton.BackgroundColor3 = Color3.fromRGB(50, 150, 50); updateStatusLabel() end)
+speedFastButton.MouseButton1Click:Connect(function() farmSpeedMultiplier = 2; waitDelay = 0.02; resetSpeedButtonsColor(); speedFastButton.BackgroundColor3 = Color3.fromRGB(150, 100, 50); updateStatusLabel() end)
+speedInsaneButton.MouseButton1Click:Connect(function() farmSpeedMultiplier = 5; waitDelay = 0.01; resetSpeedButtonsColor(); speedInsaneButton.BackgroundColor3 = Color3.fromRGB(150, 50, 50); updateStatusLabel() end)
+
+toggleButton.MouseButton1Click:Connect(function()
+    trainerEnabled = not trainerEnabled
+    toggleButton.Text = trainerEnabled and "Auto Farm: ON" or "Auto Farm: OFF"
+    toggleButton.BackgroundColor3 = trainerEnabled and Color3.fromRGB(50, 150, 50) or Color3.fromRGB(150, 50, 50)
+    if not trainerEnabled then lockedCFrame = nil end
+    updateStatusLabel()
+end)
+
+rejoinButton.MouseButton1Click:Connect(function() TeleportService:Teleport(game.PlaceId, LocalPlayer) end)
+updateStatusLabel()
